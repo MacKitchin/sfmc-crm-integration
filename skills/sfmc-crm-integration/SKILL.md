@@ -91,9 +91,12 @@ The 11 standardized columns carried through the pipeline:
 - **Test through `Manual_Entries` + `CRM_IntegrationManual`.** Validate Content Block or
   mapping changes with a single test record and verify the resulting Lead in Salesforce —
   never test by poking the live hourly path.
-- **Never commit or paste secrets.** `.gitignore` blocks `.env`, `client_secret*`, and
-  `*.secret`. Load the SFMC client secret from an env var and use it only inline in one auth
-  call; never echo it or write it into docs/commits.
+- **Never commit secrets — the `.gitignore` is the guardrail.** The only true secrets here
+  are the SFMC **client secret** and any OAuth **bearer/refresh token**; never commit, paste,
+  log, or write them into docs or commit messages. Keep secret material only in files the
+  `.gitignore` already catches (`.env`, `client_secret*`, `*.secret`, `*.token`, `*.pem`,
+  `*.key`, …), load it from an env var, and use it inline in a single auth call. See
+  **Security & Secrets** below for the full workflow.
 - **`CRMProcessed` is the dedup key + audit trail and is append-only.** Don't delete or
   rewrite rows; the hourly anti-join depends on it.
 - **Respect Salesforce org limits.** Direct Apex class deploy to prod is blocked
@@ -105,6 +108,32 @@ The 11 standardized columns carried through the pipeline:
   Dropping `Lead_Details__c` is a regression.
 - **Adding a source is a coordinated change.** It requires editing the `FormEntries_ToCRM`
   SQL **and** the mapping DEs together — never one without the other.
+
+## Security & Secrets
+
+The `.gitignore` at the repo root is the safety net that keeps credentials out of version
+control. Treat it as load-bearing, not boilerplate — these docs intentionally contain
+internal identifiers, so the discipline below is what prevents a real leak. The
+`tests/check_security_guidelines.py` validator enforces these standards mechanically (run it
+or wire it as a pre-commit hook — see `../../tests/README.md`).
+
+- **Know what is secret vs. not.** Secrets = the SFMC **client secret** and any OAuth
+  **bearer/refresh token**. These must never be committed, echoed, logged, or written into
+  docs or commit messages. Everything else referenced here — Org ID, client ID, SFMC
+  subdomain, BU IDs, asset IDs, DE keys, the MC Connect user email — are non-credential
+  config identifiers that cannot authenticate without the secret, so they may stay in the
+  docs. Keep this repo **private** as a second layer of protection.
+- **Store secrets only in ignored paths.** Put any credential file where the `.gitignore`
+  already matches it — `.env`, `client_secret*`, `*.secret`, `*.token`, `*.pem`, `*.key`,
+  `credentials*`. Pull the value from the environment (`CLIENT_SECRET=$(...)`) and reference
+  `$CLIENT_SECRET` inline; never paste the literal value into a command, file, or message.
+- **Extend the guardrail before adding a new secret type.** If a task introduces a new kind
+  of credential file, add a matching pattern to `.gitignore` *first*, then create the file.
+  Never bypass the ignore with `git add -f`, and never loosen or delete existing patterns.
+- **Verify before every commit.** Run `git status` and `git --no-pager diff --cached` (or
+  `python3 tests/check_security_guidelines.py --staged`) and confirm no secret value or
+  credential file is staged. If a secret was already committed, stop and tell the user — the
+  credential likely needs rotating and history rewriting.
 
 ## Tooling
 
