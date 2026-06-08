@@ -1,6 +1,27 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.secret
+secrets.*
+client_secret*
+*.token
+*.pem
+*.key
+*.p12
+*.pfx
+*.keytab
+credentials
+credentials.json
+id_rsa
+id_rsa.*
+.netrc
+
 # Data artifacts
 *.xlsx
 *.docx
 *.zip
 SFMC_Lead_View_Metadata_bundle/
+
+# OS
 .DS_Store
