@@ -1,17 +1,5 @@
-# Secrets
-.env
-*.secret
-client_secret*
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Editor
-.vscode/
-.idea/
-
-# Python
-__pycache__/
-*.pyc
-venv/
+# Data artifacts
+*.xlsx
+*.docx
+*.zip
+SFMC_Lead_View_Metadata_bundle/
