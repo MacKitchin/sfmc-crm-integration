@@ -17,6 +17,9 @@ id_rsa
 id_rsa.*
 .netrc
 
+# Temporary fetched SFMC assets
+tmp/
+
 # OS
 .DS_Store
 Thumbs.db
