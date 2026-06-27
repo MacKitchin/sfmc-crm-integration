@@ -5,7 +5,7 @@
 | Source | Volume | OptIn Field | Category |
 |---|---|---|---|
 | MeetingsNet2025 | 5,575 | Check Source_OptInTo | Newsletter syndication |
-| EventTechNewsletter_Form | 1,278 | BizBash_Event_Tech__c | Newsletter signup |
+| EventTechNewsletter_Form | 1,278 | BizBash_Universe__c + BizBash_Event_Technology_Newsletter__c | Newsletter signup |
 | CventApril_Registrants | 119 | Check Source_OptInTo | Webinar registrants |
 | Czarnowski_WP_July2025 | 110 | Check Source_OptInTo | Whitepaper download |
 | MagazineSubForm_BizbashBuzz | 102 | Check Source_OptInTo | Magazine subscription |
@@ -34,7 +34,7 @@ When a new form/content source is added:
 
 1. **FormEntries_ToCRM SQL** — Add a new `SELECT ... UNION ALL` block for the new form DE, with the `Source` value hardcoded
 2. **Source_OptInTo DE** — Add a row mapping the new `Source` value to the appropriate BizBash opt-in boolean field and date field
-3. **Source_Campaign DE** — (Optional) Add a row mapping the new `Source` to a Salesforce Campaign ID
+3. **Source_Campaign DE** — (Optional) Add a row mapping the new `Source` to a Salesforce Campaign name
 4. **Test** — Insert a test record into `Manual_Entries` with the new Source value, trigger CRM_Integration, verify the Lead is created correctly
 
 ## Sources Missing OptIn Mappings (as of April 2026)

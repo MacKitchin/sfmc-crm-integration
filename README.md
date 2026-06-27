@@ -14,7 +14,7 @@ This repo documents the Marketing Cloud (SFMC) to Salesforce CRM integration tha
 | **SFMC Subdomain** | `mc4y763vp8r2sk5c18sv5j2sphry` |
 | **MC Connect User** | `mc-connect-crm@bizbash.com` (ID: `0054X00000Dk173QAB`) |
 | **Content Block (Live)** | Asset ID `67116`, Key: `CRM_Integration_ProcessRecs_BizBash` |
-| **Content Block (Backup)** | Asset ID `179321`, Key: `CRM_ProcessRecs_BKP_20260402` |
+| **Content Block (Latest Backup)** | Asset ID `188074`, Key: `CRM_BKP_202604280821_DF` |
 
 ## Pipeline Overview
 

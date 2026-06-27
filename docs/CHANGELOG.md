@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0] — 2026-04-28
+
+### Changed — Expanded Lead Field Capture
+- Updated the live AMPscript Content Block `CRM_Integration_ProcessRecs_BizBash` (Asset ID `67116`) to create Leads with 16 field-value pairs.
+- Added address capture: `Street`, `City`, `State`, `Country`.
+- Added source/date attribution: `Lead_Details__c`, `SFMC_Form_Submission_Date__c`, and `SFMC_Import_Source__c`.
+- Updated the existing Lead path to refresh address/source/date/import attribution while setting opt-in fields.
+
+### Fixed — Salesforce DateTime Formatting
+- Formatted SFMC `DateAdded` before passing it to Salesforce DateTime fields.
+- Backup before the date-format fix: Asset ID `188074`, Key `CRM_BKP_202604280821_DF`.
+- Verified with production test lead `00QUX00000R61xx2AB` from source `EventTechNewsletter_Form`; Salesforce Lead fields, two mapped opt-ins, and the `CRMProcessed` audit row were populated.
+
 ## [1.0.0] — 2026-04-02
 
 ### Fixed — Lead Source Attribution
