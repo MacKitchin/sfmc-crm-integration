@@ -1,0 +1,244 @@
+%%[
+
+SET @RecordsToCheck = "SendToCRMProcess"
+
+SET @DErowCount = DataExtensionRowCount(@RecordsToCheck)
+
+SET @UpdateRows = LookupOrderedRows(@RecordsToCheck, @DErowCount, "EmailAddress asc", "Process", "Y")
+SET @rowCount = rowcount(@UpdateRows)
+
+IF @rowCount >= 1 THEN
+
+  For @i = 1 to @rowCount DO
+
+    SET @rowList = Row(@UpdateRows, @i)
+    SET @Source = field(@rowList, 'Source')
+    SET @EmailAddress = field(@rowList, 'EmailAddress')
+
+    SET @FirstName = field(@rowList, 'FirstName')
+    if empty(@FirstName) then 
+      set @FirstName = '[not provided]'
+    endif
+
+    SET @LastName = field(@rowList, 'LastName')
+    if empty(@LastName) then 
+      set @LastName = '[not provided]'
+    endif
+
+    SET @JobTitle = field(@rowList, 'JobTitle')
+
+    SET @Company = field(@rowList, 'Company')
+    if empty(@Company) then 
+      set @Company = '[not provided]'
+    endif
+
+    SET @Phone = field(@rowList, 'Phone')
+    if not empty(@Phone) then 
+     set @Phone = Format(@Phone,"(###) ###-####")
+    endif
+
+    SET @Address = field(@rowList, 'Address')
+
+    SET @City = field(@rowList, 'City')
+
+    SET @State = field(@rowList, 'State')
+
+    SET @Country = field(@rowList, 'Country')
+
+    SET @DateAdded = field(@rowList, 'DateAdded')
+
+
+    set @crm_type = ''
+    set @CRMID = ''
+    set @crm_action = ''
+    set @CampaignMemID = ''
+    set @CampaignMemAction = ''
+
+
+    /* check to see if contact already */
+    set @rs_check = RetrieveSalesforceObjects("Contact","Id","Email", "=", @EmailAddress)
+    set @rs_check_rc = rowcount(@rs_check)
+    IF @rs_check_rc > 0 THEN
+        SET @rs_check_row = ROW(@rs_check,1)
+        SET @CRMID = FIELD(@rs_check_row,"Id")
+        set @crm_type = 'Contact'
+        set @crm_action = 'Existing'
+    ENDIF
+    IF empty(@crm_type) THEN  
+      /* check to see if lead already */
+      set @rs_check = RetrieveSalesforceObjects("Lead","Id,ConvertedAccountId,ConvertedContactId,IsConverted","Email", "=", @EmailAddress)
+      set @rs_check_rc = rowcount(@rs_check)
+      
+      if @rs_check_rc == 0 then 
+       set @rs_check = RetrieveSalesforceObjects("Lead","Id,ConvertedAccountId,ConvertedContactId,IsConverted","Alternate_Email__c", "=", @EmailAddress)
+       set @rs_check_rc = rowcount(@rs_check)
+      endif
+      
+      IF @rs_check_rc > 0 THEN
+          SET @rs_check_row = ROW(@rs_check,1)
+          SET @CRMID = FIELD(@rs_check_row,"Id")
+          SET @convertAcct = FIELD(@rs_check_row,"ConvertedAccountId")
+          SET @convertLead = FIELD(@rs_check_row,"ConvertedContactId")
+          SET @convert = FIELD(@rs_check_row,"IsConverted")
+          Set @crm_type = 'Lead'
+          set @crm_action = 'Existing'
+
+          if not empty(@convertAcct) then 
+            set @crm_type = 'ConvertedAccount'
+            set @crm_action = 'Existing'
+            set @CRMID = @convertAcct
+          endif
+          
+          if not empty(@convertLead) then 
+            set @crm_type = 'ConvertedLead'
+            set @crm_action = 'Existing'
+            set @CRMID = @convertLead
+          endif
+          
+          if @convert == 'True' then 
+            set @crm_type = 'ConvertedLead'
+            set @crm_action = 'Existing'        
+          endif
+          
+      ENDIF
+    ENDIF
+
+    /* create a new lead */
+    IF empty(@crm_type) THEN
+      /* create a new lead */
+          if empty(@DateAdded) then
+            set @SubmissionDate = Replace(FormatDate(Now(),"yyyy-MM-ddT","hh:mm:ss"),' ','')
+          else
+            set @SubmissionDate = Replace(FormatDate(@DateAdded,"yyyy-MM-ddT","hh:mm:ss"),' ','')
+          endif
+
+          set @CRMID = CreateSalesforceObject(
+              "Lead", 16,
+              "FirstName", @FirstName,
+              "LastName", @LastName,
+              "Company", @Company,
+              "Email", @EmailAddress,
+              "Phone", @Phone,
+              "Title", @JobTitle,
+              "Street", @Address,
+              "City", @City,
+              "State", @State,
+              "Country", @Country,
+              "New_MC_Lead_To_Sort__c", 'true',
+              "Lead_Source__c", "MC BizBash",
+              "LeadSource", "MC BizBash",
+              "Lead_Details__c", @Source,
+              "SFMC_Form_Submission_Date__c", @SubmissionDate,
+              "SFMC_Import_Source__c", "CRM_Integration"
+             ) 
+          set @crm_type = 'Lead'
+          set @crm_action = 'New'
+    ENDIF
+
+
+    /* update publications to opt in */
+    set @optin_rows = LookupRows('Source_OptInTo','Source', @Source)
+    set @optin_rowCount = rowcount(@optin_rows)
+
+    if @optin_rowCount > 0 then
+      for @j = 1 to @optin_rowCount do
+        set @optin_row = row(@optin_rows,@j)
+        set @OptInField = field(@optin_row,'OptInField')
+        set @OptInDateField = field(@optin_row,'OptInDateField') 
+
+        if @CRM_type == 'Lead' then 
+          if empty(@DateAdded) then
+            set @SubmissionDate = Replace(FormatDate(Now(),"yyyy-MM-ddT","hh:mm:ss"),' ','')
+          else
+            set @SubmissionDate = Replace(FormatDate(@DateAdded,"yyyy-MM-ddT","hh:mm:ss"),' ','')
+          endif
+
+          set @lead_update_result = UpdateSingleSalesforceObject('Lead',@CRMID,
+            'Street',@Address,
+            'City',@City,
+            'State',@State,
+            'Country',@Country,
+            'Lead_Details__c',@Source,
+            'SFMC_Form_Submission_Date__c',@SubmissionDate,
+            'SFMC_Import_Source__c','CRM_Integration'
+          )
+
+          set @update_result = UpdateSingleSalesforceObject('Lead',@CRMID,@OptInField,'true',@OptInDateField,Replace(FormatDate(Now(),"yyyy-MM-ddT","hh:mm:ss"),' ',''))
+        ELSEIF @CRM_type == 'Contact' then 
+          set @update_result = UpdateSingleSalesforceObject('Contact',@CRMID,@OptInField,'true',@OptInDateField,Replace(FormatDate(Now(),"yyyy-MM-ddT","hh:mm:ss"),' ',''))
+        endif
+      next @j
+    endif
+
+
+    /* Is there a campaign to add individual to? */
+    set @CampaignID = ''
+    set @CampaignMemID = ''
+
+    set @campaignName = Lookup('Source_Campaign','CampaignName', 'Source', @Source)
+    if not empty(@campaignName) and @crm_type != 'ConvertedAccount' then 
+
+      set @rs_check = RetrieveSalesforceObjects("Campaign","Id","Name", "=", @campaignName)
+      set @rs_check_rc = rowcount(@rs_check)
+      IF @rs_check_rc > 0 THEN
+          SET @rs_check_row = ROW(@rs_check,1)
+          SET @CampaignID = FIELD(@rs_check_row,"Id")
+      ENDIF
+
+      if not empty(@CampaignID) then
+        /* create a new campaign member record */
+        if @CRM_type == 'Lead' then
+          set @rs_check = RetrieveSalesforceObjects("CampaignMember","Id","CampaignID", "=", @CampaignID,"LeadID","=",@CRMID)
+          set @rs_check_rc = rowcount(@rs_check)
+          IF @rs_check_rc > 0 THEN
+            SET @rs_check_row = ROW(@rs_check,1)
+            SET @CampaignMemID = FIELD(@rs_check_row,"Id")
+            set @CampaignMemAction = "Existing"
+          else 
+            set @CampaignMemID = CreateSalesforceObject("CampaignMember", 2,"CampaignID", @CampaignID,"LeadId", @CRMID) 
+            set @CampaignMemAction = "New"
+          endif
+        elseif @CRM_type == 'Contact' then 
+          set @rs_check = RetrieveSalesforceObjects("CampaignMember","Id","CampaignID", "=", @CampaignID,"ContactId","=",@CRMID)
+          set @rs_check_rc = rowcount(@rs_check)
+          IF @rs_check_rc > 0 THEN 
+            SET @rs_check_row = ROW(@rs_check,1)
+            SET @CampaignMemID = FIELD(@rs_check_row,"Id")
+            set @CampaignMemAction = "Existing"
+          else 
+            set @CampaignMemID = CreateSalesforceObject("CampaignMember", 2,"CampaignID", @CampaignID,"ContactId", @CRMID)
+            set @CampaignMemAction = "New"
+          endif 
+        endif
+      endif
+
+    endif
+
+
+    /* add record to CRM Processed DE */
+    set @insertCount = insertData("CRMProcessed",
+      "Source", @Source, 
+      "EmailAddress", @EmailAddress, 
+      "FirstName", @FirstName, 
+      "LastName", @LastName, 
+      "JobTitle", @JobTitle, 
+      "Company", @Company, 
+      "Phone", @Phone, 
+      "Address", @Address, 
+      "City", @City, 
+      "State", @State, 
+      "Country", @Country, 
+      "Source", @Source, 
+      "DateAdded", @DateAdded, 
+      "Action", @crm_action, 
+      "CRMID", @CRMID,
+      "CRMType", @CRM_type,
+      "CampaignMemID", @CampaignMemID,
+      "CampaignMemAction", @CampaignMemAction)
+
+      
+  Next @i
+
+ENDIF
+
+]%%
